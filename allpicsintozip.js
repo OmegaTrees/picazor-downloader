@@ -3,7 +3,7 @@
 // @namespace    http://tampermonkey.net/
 // @version      2.5
 // @description  ZIP full-size images with progress + fast bottom scroll
-// @match        *://*/*
+// @match        https://picazor.com/en/*
 // @grant        none
 // ==/UserScript==
 
