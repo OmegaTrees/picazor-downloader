@@ -1,15 +1,14 @@
 // ==UserScript==
-// @name         Download Full-Size Images (Remove 500px_ prefix)
+// @name         Download Full-Size Images (500px remover + Count + Delay)
 // @namespace    http://tampermonkey.net/
-// @version      1.0
-// @description  Finds images with 500px_ prefix and downloads full-size versions
+// @version      1.2
+// @description  Finds images with 500px_ prefix, reports counts, downloads with delay
 // @match        *://*/*
 // @grant        none
 // ==/UserScript==
 
 (function () {
 
-    // Create a button
     const btn = document.createElement("button");
     btn.textContent = "Download Full Images";
     btn.style.position = "fixed";
@@ -23,49 +22,61 @@
     btn.style.borderRadius = "6px";
     btn.style.cursor = "pointer";
     btn.style.fontSize = "14px";
+    btn.style.boxShadow = "0 0 10px rgba(0,0,0,0.4)";
 
     document.body.appendChild(btn);
 
-    // When clicked
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", async () => {
 
         const imgs = document.querySelectorAll("img");
+        const totalFound = imgs.length;
+
+        // Collect only the URLs that need downloading
+        const downloadList = [];
 
         imgs.forEach(img => {
-
             let src = img.src;
-
             if (!src) return;
 
-            // If relative URL, convert to absolute
             if (src.startsWith("/")) {
                 src = location.origin + src;
             }
 
-            // Only modify images that start with '500px_'
             const newSrc = src.replace(/\/500px_/, "/");
-
-            // If filename changed, download new version
             if (newSrc !== src) {
-                downloadImage(newSrc);
+                downloadList.push(newSrc);
             }
-
         });
 
-        alert("Download started for all full-size images!");
+        alert(
+            "Images Found: " + totalFound +
+            "\nImages With 500px_: " + downloadList.length +
+            "\nStarting downloads with delay..."
+        );
+
+        // Delay between downloads (ms)
+        const delay = 300;
+
+        for (let i = 0; i < downloadList.length; i++) {
+            downloadImage(downloadList[i]);
+            await sleep(delay);
+        }
+
+        alert("Finished downloading all full-size images!");
 
     });
 
-    // Helper: download file
     function downloadImage(url) {
         const a = document.createElement("a");
         a.href = url;
-
-        // Extract filename
         a.download = url.split("/").pop();
         document.body.appendChild(a);
         a.click();
         a.remove();
+    }
+
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
 
 })();
