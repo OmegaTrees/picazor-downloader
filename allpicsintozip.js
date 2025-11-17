@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Zip Full-Size Images + Auto Bottom Scroll + Progress
+// @name         Zip Full-Size Images + Videos + Auto Bottom Scroll + Progress
 // @namespace    http://tampermonkey.net/
-// @version      2.5
-// @description  ZIP full-size images with progress + fast bottom scroll
+// @version      3.0
+// @description  ZIP full-size images AND videos with progress + fast bottom scroll
 // @match        https://picazor.com/en/*
 // @grant        none
 // ==/UserScript==
@@ -45,7 +45,7 @@
 
         // --- ZIP button ---
         const zipBtn = document.createElement("button");
-        zipBtn.textContent = "ZIP Full Images";
+        zipBtn.textContent = "ZIP Images + Videos";
         zipBtn.style.position = "fixed";
         zipBtn.style.top = "20px";
         zipBtn.style.right = "20px";
@@ -95,6 +95,17 @@
         progressWrapper.appendChild(progressBar);
         document.body.appendChild(progressWrapper);
 
+        // --- Progress Text ---
+        const progressText = document.createElement("div");
+        progressText.style.position = "fixed";
+        progressText.style.top = "125px";
+        progressText.style.right = "20px";
+        progressText.style.color = "#333";
+        progressText.style.fontSize = "12px";
+        progressText.style.display = "none";
+        progressText.style.zIndex = 999999;
+        document.body.appendChild(progressText);
+
         // --- Scroll toggle ---
         scrollBtn.addEventListener("click", () => {
             if (!bottomScrollActive) {
@@ -120,17 +131,27 @@
                 if (!src) return;
                 if (src.startsWith("/"))
                     src = location.origin + src;
-                const full = src.replace(/\/500px_/, "/");
-                if (full !== src)
-                    downloadList.push(full);
+
+                // Check if this is a video thumbnail (ends with .mp4.jpg)
+                if (src.includes(".mp4.jpg")) {
+                    // Convert to video URL by removing /500px_ and .jpg
+                    const videoUrl = src.replace(/\/500px_/, "/").replace(/\.jpg$/, "");
+                    downloadList.push(videoUrl);
+                } else {
+                    // Regular image - remove /500px_ prefix
+                    const full = src.replace(/\/500px_/, "/");
+                    if (full !== src)
+                        downloadList.push(full);
+                }
             });
 
             if (downloadList.length === 0) {
-                alert("No full-size images found!");
+                alert("No images or videos found!");
                 return;
             }
 
             progressWrapper.style.display = "block";
+            progressText.style.display = "block";
             progressBar.style.width = "0%";
 
             const zip = new JSZip();
@@ -138,6 +159,7 @@
 
             for (let url of downloadList) {
                 try {
+                    progressText.textContent = `Downloading ${count + 1}/${downloadList.length}`;
                     const blob = await fetch(url).then(r => r.blob());
                     zip.file(url.split("/").pop(), blob);
                 } catch (e) {
@@ -147,14 +169,16 @@
                 progressBar.style.width = ((count / downloadList.length) * 100).toFixed(2) + "%";
             }
 
+            progressText.textContent = "Creating ZIP...";
             const zipBlob = await zip.generateAsync({ type: "blob" });
             const a = document.createElement("a");
             a.href = URL.createObjectURL(zipBlob);
-            a.download = "images.zip";
+            a.download = "images_and_videos.zip";
             a.click();
 
             progressWrapper.style.display = "none";
-            alert("ZIP ready!");
+            progressText.style.display = "none";
+            alert(`ZIP ready! Downloaded ${downloadList.length} files.`);
         });
     }
 
